@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="columns">
+  <div class="column is-3">
+    <aside class="menu">
+      <p class="menu-label">Navigation</p>
+      <ul class="menu-list">
+        <li><a href="{{ url_for('favorites') }}">⭐ Favorites</a></li>
+        <!-- category checkboxes appear below -->
+      </ul>
+    </aside>
+  </div>
+  <div class="column is-9">
+    {% for date, examples in grouped.items() %}
+      <section class="section">
+        <h4 class="title is-5">{{ date }}</h4>
+        <ul>
+          {% for item in examples %}
+            <div class="box mb-3" id="fav-{{ item.fav_id }}">
+              <div class="is-flex is-align-items-center">
+                <span class="icon has-text-warning is-clickable unfav mr-2" data-fav-id="{{ item.fav_id }}">
+                  <i class="bi bi-star-fill"></i>
+                </span>
+                <span>{{ item.example }}</span>
+              </div>
+              <div class="mt-2">
+                <audio controls src="{{ item.audio }}"></audio>
+              </div>
+            </div>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

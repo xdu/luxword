@@ -1,0 +1,132 @@
+{% extends "layout.html" %}
+
+{% block content %}
+        <h1 class="title">Luxembourgish A1 Vocabulary</h1>
+        
+            <div class="columns">
+                <!-- Sidebar with checkboxes -->
+                <div class="column is-one-third sidebar">
+                  <form method="get">
+                    <aside class="menu">
+                        <p class="menu-label">Navigation</p>
+                        <ul class="menu-list">
+                            <li><a href="{{ url_for('favorites') }}">Favorites</a></li>
+                        </ul>
+                        <p class="menu-label">Filter by Lexical Category</p>
+                        {% for category, count in categories|sort(attribute='1', reverse=True) %}
+                            <div class="field">
+                                <label class="checkbox">
+                                    <input
+                                        type="checkbox"
+                                        name="lexcat"
+                                        value="{{ category }}"
+                                        onchange="this.form.submit()"
+                                        {% if category in selected_lexcats %}checked{% endif %}>
+                                    {{ category if category else 'Uncategorized' }} ({{ count }})
+                                </label>
+                            </div>
+                        {% endfor %}
+                        {% if selected_lexcats %}
+                            <div class="field">
+                                <a href="{{ url_for('index') }}" class="button is-small is-light">Clear Filters</a>
+                            </div>
+                        {% endif %}
+                    </aside>
+                  </form>
+                </div>
+
+                <!-- Word Grid -->
+                <div class="column content-area">
+                      <div class="grid">
+                        {% for word in words %}
+                            <div class="cell word-tile box has-text-centered" onclick="showWordModal('{{ word.lodid }}', '{{ word.word }}')">
+                                {{ word.word }}
+                            </div>
+                        {% endfor %}
+                      </div>
+                        {% if not words %}
+                            <p>No words found for selected categories.</p>
+                        {% endif %}
+                    
+                </div>
+            </div>
+
+<!-- Modal -->
+<div id="wordModal" class="modal">
+  <div class="modal-background" onclick="closeModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title" id="modalTitle">Word</p>
+      <button class="delete" aria-label="close" onclick="closeModal()"></button>
+    </header>
+    <section class="modal-card-body" id="modalContent">
+        <p>Loading examples...</p>
+      </section>
+    <footer class="modal-card-foot">
+      <button class="button is-light" onclick="closeModal()">Close</button>
+    </footer>
+  </div>
+</div>
+
+<!-- JS -->
+<script>
+  function showWordModal(lodid, word) {
+    const modal = document.getElementById("wordModal");
+    document.getElementById("modalTitle").innerText = word;
+    document.getElementById("modalContent").innerHTML = "<p>Loading examples...</p>";
+    modal.classList.add("is-active");
+
+    fetch(`/get_examples/${lodid}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data.examples.length) {
+          document.getElementById("modalContent").innerHTML = "<p>No examples found.</p>";
+          return;
+        }
+
+        const content = data.examples.map(example => {
+          const starClass = example.is_fav ? "bi-star-fill has-text-warning" : "bi-star";
+          return `
+            <div class="box">
+              <div class="media">
+                <div class="media-left">
+                  <span class="icon" onclick="toggleFav(${example.id}, this)">
+                    <i class="bi ${starClass}" data-exid="${example.id}"></i>
+                  </span>
+                </div>
+                <div class="media-content">
+                  <p>${example.text}</p>
+                  <audio controls>
+                    <source src="${example.audio}" type="audio/mp4">
+                  </audio>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById("modalContent").innerHTML = content;
+      });
+  }
+
+  function closeModal() {
+    document.getElementById("wordModal").classList.remove("is-active");
+  }
+
+  function toggleFav(examId, iconElement) {
+    fetch('/toggle_fav', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({exam_id: examId})
+    }).then(res => res.json())
+      .then(data => {
+        if (data.status === 'added') {
+          iconElement.querySelector('i').className = 'bi bi-star-fill has-text-warning';
+        } else {
+          iconElement.querySelector('i').className = 'bi bi-star';
+        }
+      });
+  }
+</script>
+{% endblock %}
+</body>
+</html>

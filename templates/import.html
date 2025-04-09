@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <h1 class="title">Upload A1 Vocabulary CSV</h1>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="notification is-success">
+              {{ messages[0] }}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+            <div class="file is-boxed">
+                <label class="file-label">
+                    <input class="file-input" type="file" name="file">
+                    <span class="file-cta">
+                        <span class="file-icon">📄</span>
+                        <span class="file-label">Choose CSV…</span>
+                    </span>
+                </label>
+            </div>
+            <br>
+            <button class="button is-primary">Upload</button>
+        </form>
+    </div>
+</section>
+{% endblock %}
+</body>
+</html>

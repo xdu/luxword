@@ -9,6 +9,12 @@
         <li><a href="{{ url_for('favorites') }}">⭐ Favorites</a></li>
         <!-- category checkboxes appear below -->
       </ul>
+      <div class="field">
+        <button class="button is-small is-primary" onclick="document.getElementById('manualModal').classList.add('is-active')">
+          <span class="icon"><i class="bi bi-plus"></i></span>
+          <span>Add Favorite</span>
+        </button>
+      </div>         
     </aside>
   </div>
   <div class="column is-9">
@@ -34,4 +40,52 @@
     {% endfor %}
   </div>
 </div>
+<div id="manualModal" class="modal">
+  <div class="modal-background" onclick="closeManualModal()"></div>
+
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Add a Custom Favorite</p>
+      <button class="delete" aria-label="close" onclick="closeManualModal()"></button>
+    </header>
+
+    <section class="modal-card-body">
+      <form id="manualForm">
+        <div class="field">
+          <label class="label">Example Sentence</label>
+          <div class="control">
+            <textarea class="textarea" name="example" placeholder="Enter your sentence..." required></textarea>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="submitManualFavorite()">Save</button>
+      <button class="button" onclick="closeManualModal()">Cancel</button>
+    </footer>
+  </div>
+</div>
 {% endblock %}
+{% block scripts %}:
+<script>
+  function closeManualModal() {
+      document.getElementById("manualModal").classList.remove("is-active");
+  }
+  
+  function submitManualFavorite() {
+      const form = document.getElementById("manualForm");
+      const data = new FormData(form);
+      fetch("/add_manual_favorite", {
+          method: "POST",
+          body: data
+      }).then(res => res.json())
+        .then(json => {
+          if (json.status === "ok") {
+              window.location.reload();
+          }
+      });
+  }
+  </script>
+  {% endblock  %}:
+  

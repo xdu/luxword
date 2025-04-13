@@ -37,14 +37,33 @@
 
                 <!-- Word Grid -->
                 <div class="column content-area">
+                    <!-- Search Box and Add Button -->
+                    <div class="field is-grouped">
+                        <p class="control is-expanded">
+                            <input class="input" type="text" id="wordSearchInput" placeholder="Search words...">
+                        </p>
+                        <p class="control">
+                          <a href="{{ url_for('add_word') }}" class="button is-primary">
+                            <span class="icon"><i class="bi bi-plus"></i></span>
+                            <span>Add Word</span>
+                          </a>
+                        </p>
+                    </div>
+                    <!-- End Search Box and Add Button -->
+
                       <div class="grid">
-                        {% for word in words %}
-                            <div class="cell word-tile box has-text-centered" onclick="showWordModal('{{ word.lodid }}', '{{ word.word }}')">
-                                {{ word.word }}
+                        {% for word_info in word_data %} {# Changed loop variable #}
+                            <div class="cell word-tile box has-text-centered" data-word="{{ word_info.LODWord.word|lower }}" onclick="showWordModal('{{ word_info.LODWord.lodid }}', '{{ word_info.LODWord.word }}')"> {# Updated data-word and onclick #}
+                                {{ word_info.LODWord.word }} {# Updated word display #}
+                                {% if word_info.has_examples %} {# Added conditional icon #}
+                                    <span class="icon is-small" style="margin-left: 0.25em; vertical-align: middle;">
+                                        <i class="bi bi-database"></i>
+                                    </span>
+                                {% endif %}
                             </div>
                         {% endfor %}
                       </div>
-                        {% if not words %}
+                        {% if not word_data %} {# Updated condition check #}
                             <p>No words found for selected categories.</p>
                         {% endif %}
                     
@@ -126,6 +145,26 @@
         }
       });
   }
+
+  // Add search filtering logic
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('wordSearchInput');
+    const wordTiles = document.querySelectorAll('.word-tile');
+
+    searchInput.addEventListener('input', () => {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+
+      wordTiles.forEach(tile => {
+        const word = tile.getAttribute('data-word'); // Use data-word attribute
+        if (word.includes(searchTerm)) {
+          tile.style.display = ''; // Show tile
+        } else {
+          tile.style.display = 'none'; // Hide tile
+        }
+      });
+    });
+  });
+
 </script>
 {% endblock %}
 </body>

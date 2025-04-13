@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title">Add a Word</h1>
+
+    <form method="post" class="mb-4">
+      <div class="field has-addons">
+        <div class="control is-expanded">
+          <input class="input" type="text" name="search" value="{{ query }}" placeholder="Enter word to search..." required>
+        </div>
+        <div class="control">
+          <button type="submit" class="button is-primary">
+            <span class="icon"><i class="bi bi-search"></i></span>
+            <span>Search</span>
+          </button>
+        </div>
+        <div class="control">
+          <a href="{{ url_for('index') }}" class="button is-light">Return</a>
+        </div>
+      </div>
+    </form>
+
+    {% if results %}
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth">
+        <thead>
+          <tr>
+            <th>Word</th>
+            <th>Category</th>
+            <th>LODID</th>
+            <th>Matches</th>
+            <th>Add</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in results %}
+          <tr id="row-{{ item.article_id }}">
+            <td>{{ item.word_lb }}</td>
+            <td>{{ item.pos or '' }}</td>
+            <td>{{ item.article_id }}</td>
+            <td>
+              {% if item.matches %}
+                {{ item.matches | join(', ') }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              <button class="button is-small is-success"
+                      onclick="addWord('{{ item.article_id }}', '{{ item.word_lb }}', '{{ item.pos or '' }}', this)">
+                <span class="icon"><i class="bi bi-plus-lg"></i></span>
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% elif query %}
+      <p>No results found for "{{ query }}"</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addWord(lodid, word, pos, btn) {
+  fetch("/add_word_to_db", {
+    method: "POST",
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({lodid: lodid, word: word, pos: pos})
+  }).then(res => res.json())
+    .then(data => {
+      if (data.status === "added" || data.status === "exists") {
+        btn.classList.add("is-light");
+        btn.classList.remove("is-success");
+        btn.disabled = true;
+      }
+    });
+}
+</script>
+{% endblock %}

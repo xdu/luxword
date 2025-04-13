@@ -4,6 +4,7 @@ import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from models import db, LODWord, LODExam, LODUserFav
 from sqlalchemy import func
+from sqlalchemy.orm import outerjoin # Added import
 from flask_migrate import Migrate
 
 app = Flask(__name__)
@@ -33,21 +34,25 @@ def index():
         db.session.query(LODWord.lexcat, func.count(LODWord.word))
         .group_by(LODWord.lexcat)
         .order_by(LODWord.lexcat)
-        .all()
-    )
+            .all()
+        )
+
+    # Base query joining LODWord with LODExam to check for examples
+    query = db.session.query(
+        LODWord,
+        (LODExam.id != None).label('has_examples') # Create a boolean label
+    ).outerjoin(LODExam, LODWord.lodid == LODExam.ex_lodid) \
+     .group_by(LODWord.lodid) # Group by word to count examples per word
 
     # Filter by selected LEXCAT(s) if any
     if selected_lexcats:
-        words = (
-            LODWord.query
-            .filter(LODWord.lexcat.in_(selected_lexcats))
-            .order_by(LODWord.word)
-            .all()
-        )
-    else:
-        words = LODWord.query.order_by(LODWord.word).all()
+        query = query.filter(LODWord.lexcat.in_(selected_lexcats))
 
-    return render_template("index.html", words=words, categories=categories, selected_lexcats=selected_lexcats)
+    # Order and execute
+    word_data = query.order_by(LODWord.word).all()
+
+    # Pass the combined data to the template
+    return render_template("index.html", word_data=word_data, categories=categories, selected_lexcats=selected_lexcats)
 
 @app.route('/toggle_fav', methods=['POST'])
 def toggle_fav():
@@ -193,12 +198,79 @@ def favorites():
 
 @app.route("/unfavorite/<int:fav_id>", methods=["POST"])
 def unfavorite_example(fav_id):
-    record = db.session.get(LODUserFav, fav_id)
-    if record:
-        db.session.delete(record)
-        db.session.commit()
-        return jsonify({"status": "ok"})
-    return jsonify({"status": "not found"}), 404
+    fav = db.session.get(LODUserFav, fav_id)
+    if not fav:
+        return jsonify({"status": "not found"}), 404
+
+    exam = db.session.get(LODExam, fav.ex_exam_id)
+    db.session.delete(fav)
+
+    # Delete orphan manual example
+    if exam and exam.EX_LODID is None:
+        db.session.delete(exam)
+
+    db.session.commit()
+    return jsonify({"status": "ok"})
+
+@app.route("/add_manual_favorite", methods=["POST"])
+def add_manual_favorite():
+    user_id = ""  # Replace with session-based user if needed
+    sentence = request.form.get("example", "").strip()
+
+    if not sentence:
+        return jsonify({"status": "empty"}), 400
+
+    # Insert into LOD_EXAM without a LODID or AUDIO
+    new_exam = LODExam(ex_lodid=None, example=sentence, audio=None)
+    db.session.add(new_exam)
+    db.session.commit()
+
+    # Then add to favorites
+    new_fav = LODUserFav(user_id=user_id, ex_exam_id=new_exam.id)
+    db.session.add(new_fav)
+    db.session.commit()
+
+    return jsonify({"status": "ok"})
+
+@app.route("/add_word", methods=["GET", "POST"])
+def add_word():
+    if request.method == "POST":
+        query = request.form.get("search", "").strip()
+        if not query:
+            return render_template("add_word.html", results=[], query="")
+
+        try:
+            res = requests.get(f"https://lod.lu/api/lb/search?query={query}&lang=lb")
+            if res.ok:
+                data = res.json()
+                results = data.get("results", [])
+                return render_template("add_word.html", results=results, query=query)
+        except Exception as e:
+            print(f"Search error: {e}")
+
+        return render_template("add_word.html", results=[], query=query)
+
+    return render_template("add_word.html", results=[], query="")
+
+@app.route("/add_word_to_db", methods=["POST"])
+def add_word_to_db():
+    lodid = request.json.get("lodid")
+    word = request.json.get("word")
+    pos = request.json.get("pos", None)
+
+    if not lodid or not word:
+        return jsonify({"status": "error", "message": "Missing data"}), 400
+
+    # Corrected model name from LOD_WORDS to LODWord
+    existing = db.session.get(LODWord, lodid)
+    if existing:
+        return jsonify({"status": "exists"})
+
+    # Corrected model name and attribute names (lowercase)
+    new_word = LODWord(lodid=lodid, word=word, lexcat=pos)
+    db.session.add(new_word)
+    db.session.commit()
+    return jsonify({"status": "added"})
 
 @app.route('/import')
 def importfile():

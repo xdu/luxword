@@ -24,3 +24,11 @@ class LODUserFav(db.Model):
     user_id = db.Column("USER_ID", db.String, default="")
     ex_exam_id = db.Column("EX_EXAM_ID", db.Integer, db.ForeignKey('LOD_EXAM.ID'))
     fav_datetime = db.Column("FAV_DATETIME", db.DateTime, default=datetime.utcnow)
+
+class SDL_CARD(db.Model):
+    __tablename__ = 'SDL_CARD'
+
+    ID = db.Column(db.Integer, primary_key=True)
+    AUDIO_URL = db.Column(db.String, nullable=False)
+    TRANSCRIPT = db.Column(db.Text, nullable=False)
+    TRANSLATION = db.Column(db.Text, nullable=False)

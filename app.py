@@ -2,10 +2,11 @@ import csv
 import requests
 import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from models import db, LODWord, LODExam, LODUserFav
+from models import db, LODWord, LODExam, LODUserFav, SDL_CARD 
 from sqlalchemy import func
 from sqlalchemy.orm import outerjoin # Added import
 from flask_migrate import Migrate
+from googletrans import Translator
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -18,6 +19,8 @@ db.init_app(app)
 
 migrate = Migrate()
 migrate.init_app(app, db)
+
+translator = Translator()
 
 # CLI command to create tables
 @app.cli.command("init-db")
@@ -272,6 +275,77 @@ def add_word_to_db():
     db.session.commit()
     return jsonify({"status": "added"})
 
+@app.route("/flashcards")
+def flashcards():
+    cards = SDL_CARD.query.order_by(SDL_CARD.ID.desc()).all()
+    return render_template("flashcards.html", cards=cards)
+
+@app.route("/flashcards/create", methods=["GET", "POST"])
+def create_flashcard():
+    if request.method == "POST":
+        audio_url = request.form.get("audio_url", "").strip()
+        transcript = request.form.get("transcript", "").strip()
+        translation = request.form.get("translation", "").strip()
+
+        if not audio_url or not transcript or not translation:
+            flash("All fields are required.", "is-danger")
+            return redirect(url_for("create_flashcard"))
+
+        existing = SDL_CARD.query.filter_by(AUDIO_URL=audio_url).first()
+        if existing:
+            flash("Audio URL already exists in database.", "is-warning")
+            return redirect(url_for("create_flashcard"))
+
+        card = SDL_CARD(AUDIO_URL=audio_url, TRANSCRIPT=transcript, TRANSLATION=translation)
+        db.session.add(card)
+        db.session.commit()
+        return redirect(url_for("flashcards"))
+
+    return render_template("create_flashcard.html")
+
+@app.route("/flashcards/<int:card_id>")
+def view_flashcard(card_id):
+    card = db.session.get(SDL_CARD, card_id)
+    if not card:
+        flash("Card not found", "is-danger")
+        return redirect(url_for("flashcards"))
+    return render_template("flashcard_detail.html", card=card)
+
+# Update a flashcard
+@app.route("/flashcards/<int:card_id>/update", methods=["POST"])
+def update_flashcard(card_id):
+    card = db.session.get(SDL_CARD, card_id)
+    if not card:
+        return jsonify({"status": "error", "message": "Card not found"}), 404
+    
+    card.AUDIO_URL = request.form.get("audio_url", card.AUDIO_URL)
+    card.TRANSCRIPT = request.form.get("transcript", card.TRANSCRIPT)
+    card.TRANSLATION = request.form.get("translation", card.TRANSLATION)
+    
+    db.session.commit()
+    return jsonify({"status": "success"})
+
+# Delete a flashcard
+@app.route("/flashcards/<int:card_id>/delete", methods=["POST"])
+def delete_flashcard(card_id):
+    card = db.session.get(SDL_CARD, card_id)
+    if not card:
+        return jsonify({"status": "error", "message": "Card not found"}), 404
+    
+    db.session.delete(card)
+    db.session.commit()
+    return jsonify({"status": "success"})
+
+@app.route("/flashcards/translate", methods=["POST"])
+def translate_transcript():
+    data = request.json
+    transcript = data.get("transcript", "")
+    if not transcript:
+        return jsonify({"translation": ""})
+
+    result = translator.translate(transcript, dest="zh-CN")
+    return jsonify({"translation": result.text})
+
 @app.route('/import')
 def importfile():
     return render_template('import.html')
@@ -298,6 +372,10 @@ def upload():
 
     flash(f"Successfully imported {imported} words.")
     return redirect(url_for('index'))
+
+@app.template_filter('nl2br')
+def nl2br(value):
+    return value.replace('\n', '<br>')
 
 if __name__ == '__main__':
     app.run(debug=True)

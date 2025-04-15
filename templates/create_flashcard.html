@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title">➕ Create Flash Card</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="notification {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post">
+      <div class="field">
+        <label class="label">Audio URL</label>
+        <div class="control">
+          <input class="input" type="url" name="audio_url" required placeholder="https://example.com/audio.m4a">
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Transcript (Luxembourgish)</label>
+        <div class="control">
+          <textarea class="textarea" name="transcript" id="transcript" rows="4" required></textarea>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Translation</label>
+        <div class="control is-flex">
+          <textarea class="textarea mr-2" name="translation" id="translation" rows="4" required></textarea>
+          <button class="button is-info" type="button" onclick="translateText()">Translate</button>
+        </div>
+      </div>
+
+      <div class="field is-grouped mt-5">
+        <div class="control">
+          <button class="button is-primary" type="submit">Save</button>
+        </div>
+        <div class="control">
+          <a href="{{ url_for('flashcards') }}" class="button is-light">Return</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function translateText() {
+  const transcript = document.getElementById("transcript").value;
+  fetch("/flashcards/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ transcript })
+  }).then(res => res.json())
+    .then(data => {
+      document.getElementById("translation").value = data.translation;
+    });
+}
+</script>
+{% endblock %}

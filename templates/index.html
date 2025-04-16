@@ -11,6 +11,7 @@
                         <p class="menu-label">Navigation</p>
                         <ul class="menu-list">
                             <li><a href="{{ url_for('favorites') }}">Favorites</a></li>
+                            <li><a href="{{ url_for('flashcards') }}">Flashcards</a></li>
                         </ul>
                         <p class="menu-label">Filter by Lexical Category</p>
                         {% for category, count in categories|sort(attribute='1', reverse=True) %}
